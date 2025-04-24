@@ -1,99 +1,27 @@
 #!/bin/bash
 
-# PermaDeploy Installer Script
-# This script downloads and sets up the PermaDeploy tool
+echo "Installing Nitya wallet setup tool..."
+mkdir -p "$HOME/.nitya"
 
-# ANSI colors for terminal styling
-RED="\033[0;31m"
-GREEN="\033[0;32m"
-YELLOW="\033[1;33m"
-BLUE="\033[0;34m"
-MAGENTA="\033[0;35m"
-CYAN="\033[0;36m"
-RESET="\033[0m"
-
-# Print banner
-echo -e "${MAGENTA}
-    ███╗   ██╗██╗████████╗██╗   ██╗ █████╗ 
-    ████╗  ██║██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗
-    ██╔██╗ ██║██║   ██║    ╚████╔╝ ███████║
-    ██║╚██╗██║██║   ██║     ╚██╔╝  ██╔══██║
-    ██║ ╚████║██║   ██║      ██║   ██║  ██║
-    ╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝
-                                                                      
-    ${RESET}> Permanently deploy your web apps to the decentralized Arweave network${RESET}
-    ${CYAN}    
-    ┌────┐        ┌────┐
-    │${BLUE}████${CYAN}│━━━━━━━━│${BLUE}████${CYAN}│     ${RESET}PERMANENT DEPLOYMENT${CYAN}
-    └────┘╲      ╱└────┘     ${RESET}DECENTRALIZED${CYAN}
-           ╲    ╱
-            ╲  ╱
-           ┌────┐
-           │${BLUE}████${CYAN}│
-           └────┘
-${RESET}"
-
-echo -e "${YELLOW}╔════ PERMADEPLOY INSTALLATION ════╗${RESET}"
-echo -e "${BLUE}Installing required dependencies...${RESET}"
-
-# Create .permaweb directory
-PERMAWEB_DIR="$HOME/.permaweb"
-mkdir -p "$PERMAWEB_DIR/bin"
-
-# Check for Node.js
-if ! command -v node &> /dev/null; then
-    echo -e "${RED}Error: Node.js is required but not installed.${RESET}"
-    echo -e "${YELLOW}Please install Node.js (https://nodejs.org) and try again.${RESET}"
-    exit 1
-fi
-
-# Check for npm
-if ! command -v npm &> /dev/null; then
-    echo -e "${RED}Error: npm is required but not installed.${RESET}"
-    echo -e "${YELLOW}Please install npm and try again.${RESET}"
-    exit 1
-fi
-
-# Install required npm packages
-echo -e "${BLUE}Installing npm packages...${RESET}"
-npm install -g arweave @ardrive/turbo-sdk @ar.io/sdk yargs 2>/dev/null
-
-# Progress bar function
-function show_progress {
-    local duration=$1
-    local step=$(($duration / 20))
-    echo -ne "${GREEN}Progress: [                    ] (0%)${RESET}\r"
-    for i in {1..20}; do
-        sleep $step
-        echo -ne "${GREEN}Progress: ["
-        for ((j=1; j<=i; j++)); do echo -ne "█"; done
-        for ((j=i+1; j<=20; j++)); do echo -ne " "; done
-        echo -ne "] ($(($i * 5))%)${RESET}\r"
-    done
-    echo -ne "\n"
-}
-
-# Download setup.sh
-echo -e "${BLUE}Downloading setup.sh...${RESET}"
-show_progress 2
-
-# Creating setup.sh with embedded content
-cat > "$PERMAWEB_DIR/bin/setup.sh" << 'EOL'
+# Create the setup.sh script in the .nitya directory
+cat > "$HOME/.nitya/setup.sh" << 'EOL'
 #!/bin/bash
 
-# PermaDeploy Sponsor Wallet Setup Script
+# Nitya Wallet Setup Script
 
 # ANSI colors for terminal styling
 RED="\033[0;31m"
 GREEN="\033[0;32m"
-YELLOW="\033[1;33m"
 BLUE="\033[0;34m"
+YELLOW="\033[0;33m"
 MAGENTA="\033[0;35m"
 CYAN="\033[0;36m"
+WHITE="\033[1;37m"
 RESET="\033[0m"
 
-# Print banner
-echo -e "${MAGENTA}
+# Simple title display
+function print_title() {
+  echo -e "${MAGENTA}
     ███╗   ██╗██╗████████╗██╗   ██╗ █████╗ 
     ████╗  ██║██║╚══██╔══╝╚██╗ ██╔╝██╔══██╗
     ██╔██╗ ██║██║   ██║    ╚████╔╝ ███████║
@@ -101,49 +29,119 @@ echo -e "${MAGENTA}
     ██║ ╚████║██║   ██║      ██║   ██║  ██║
     ╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝
                                                                       
-    ${RESET}> Permanently deploy your web apps to the decentralized Arweave network${RESET}
+    ${WHITE}> Permanently deploy your web apps to the decentralized Arweave network${RESET}
     ${CYAN}    
     ┌────┐        ┌────┐
-    │${BLUE}████${CYAN}│━━━━━━━━│${BLUE}████${CYAN}│     ${RESET}PERMANENT DEPLOYMENT${CYAN}
-    └────┘╲      ╱└────┘     ${RESET}DECENTRALIZED${CYAN}
+    │${BLUE}████${CYAN}│━━━━━━━━│${BLUE}████${CYAN}│     ${WHITE}PERMANENT DEPLOYMENT${CYAN}
+    └────┘╲      ╱└────┘     ${WHITE}DECENTRALIZED${CYAN}
            ╲    ╱
             ╲  ╱
            ┌────┐
            │${BLUE}████${CYAN}│
            └────┘
-${RESET}"
+         ${RESET}
+"
+}
 
-echo -e "${YELLOW}╔════ PERMADEPLOY SPONSOR WALLET SETUP ════╗${RESET}"
+# Visual progress bar
+function progress_bar() {
+  local percent=$1
+  local width=${2:-30}
+  local filled=$((width * percent / 100))
+  local empty=$((width - filled))
+  local bar="${GREEN}["
+  for ((i=0; i<filled; i++)); do bar+="█"; done
+  bar+="${RED}"
+  for ((i=0; i<empty; i++)); do bar+=" "; done
+  bar+="] ${percent}%${RESET}"
+  
+  echo -ne "\r${bar}"
+  if [ $percent -eq 100 ]; then echo; fi
+}
+
+# Copy wallet address to clipboard
+function copy_to_clipboard() {
+  local text=$1
+  
+  echo -e "\n${WHITE}${text}${RESET}"
+  echo -e "${YELLOW}Press 'c' to copy wallet address to clipboard, any other key to continue...${RESET}"
+  
+  read -n 1 -s key
+  if [[ $key == "c" || $key == "C" ]]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then # macOS
+      echo -n "$text" | pbcopy
+      echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then # Windows
+      echo -n "$text" | clip
+      echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+    else # Linux and others
+      if command -v xsel &> /dev/null; then
+        echo -n "$text" | xsel -ib
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      elif command -v xclip &> /dev/null; then
+        echo -n "$text" | xclip -selection clipboard
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      elif command -v wl-copy &> /dev/null; then
+        echo -n "$text" | wl-copy
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      else
+        echo -e "${RED}Couldn't copy automatically. Please copy manually:${RESET}"
+        echo -e "${YELLOW}${text}${RESET}"
+      fi
+    fi
+  fi
+}
 
 # Define the sponsor wallet directory
-SPONSOR_DIR="$HOME/.permaweb/sponsor"
+SPONSOR_DIR="$HOME/.nitya/sponsor"
 WALLET_DIR="$SPONSOR_DIR/wallets"
 CONFIG_FILE="$SPONSOR_DIR/config.json"
 
 # Create directories if they don't exist
 mkdir -p "$SPONSOR_DIR" "$WALLET_DIR"
-echo -e "${BLUE}Configuration directory: ${RESET}$SPONSOR_DIR"
+
+print_title
+
+echo -e "${BLUE}╔════ WALLET SETUP ════╗${RESET}"
+echo -e "${CYAN}Configuration directory: ${RESET}$SPONSOR_DIR"
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}Error: Node.js is required. Please install it (e.g., 'sudo apt install nodejs' or 'brew install node').${RESET}"
+    echo -e "${RED}Error: Node.js is required. Please install it:${RESET}"
+    echo "  - Linux: sudo apt install nodejs"
+    echo "  - macOS: brew install node"
+    echo "  - Windows: download from https://nodejs.org/"
     exit 1
 fi
 
-# Progress bar function
-function show_progress {
-    local duration=$1
-    local step=$(($duration / 20))
-    echo -ne "${GREEN}Progress: [                    ] (0%)${RESET}\r"
-    for i in {1..20}; do
-        sleep $step
-        echo -ne "${GREEN}Progress: ["
-        for ((j=1; j<=i; j++)); do echo -ne "█"; done
-        for ((j=i+1; j<=20; j++)); do echo -ne " "; done
-        echo -ne "] ($(($i * 5))%)${RESET}\r"
-    done
-    echo -ne "\n"
-}
+# Check if npm is installed
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}Error: npm is required. It usually comes with Node.js.${RESET}"
+    exit 1
+fi
+
+# Check if curl is installed
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}Error: curl is required. Please install it:${RESET}"
+    echo "  - Linux: sudo apt install curl"
+    echo "  - macOS: brew install curl"
+    echo "  - Windows: download from https://curl.se/download.html"
+    exit 1
+fi
+
+# Install arweave package if needed
+echo -e "${BLUE}Checking for required packages...${RESET}"
+if ! npm list -g arweave &> /dev/null; then
+    echo -e "${YELLOW}Installing arweave package...${RESET}"
+    npm install -g arweave
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to install arweave package. Try running 'npm install -g arweave' manually.${RESET}"
+        exit 1
+    fi
+    echo -e "${GREEN}Arweave package installed successfully.${RESET}"
+else
+    echo -e "${GREEN}Arweave package already installed.${RESET}"
+fi
 
 # Function to generate a new Arweave wallet
 generate_wallet() {
@@ -151,30 +149,34 @@ generate_wallet() {
     WALLET_FILE="$WALLET_DIR/sponsor_wallet.json"
     
     # Show progress bar while generating wallet
-    show_progress 3 &
-    PROGRESS_PID=$!
+    for i in {0..100..10}; do
+        progress_bar $i
+        sleep 0.1
+    done
     
-    # Generate wallet
+    # Generate the wallet
     node -e "
         const Arweave = require('arweave');
+        const fs = require('fs');
         Arweave.init().wallets.generate().then(key => {
-            console.log(JSON.stringify(key));
+            fs.writeFileSync('$WALLET_FILE', JSON.stringify(key, null, 2));
+            console.log('Wallet generated successfully');
         }).catch(err => console.error(err));
-    " > "$WALLET_FILE" 2>/dev/null
+    " > /dev/null 2>&1
     
-    # Wait for progress bar to finish
-    wait $PROGRESS_PID
-    
-    if [ $? -ne 0 ] || [ ! -s "$WALLET_FILE" ]; then
-        echo -e "${RED}Error: Failed to generate wallet.${RESET}"
+    if [ ! -f "$WALLET_FILE" ]; then
+        echo -e "\n${RED}Error: Failed to generate wallet.${RESET}"
         exit 1
-    }
-    echo -e "${GREEN}✓ New wallet generated at ${RESET}$WALLET_FILE"
+    fi
+    
+    echo -e "\n${GREEN}✓ New wallet generated at ${RESET}$WALLET_FILE"
+    return 0
 }
 
 # Function to get wallet address from keyfile
 get_wallet_address() {
     local wallet_file="$1"
+    echo -e "${BLUE}Getting wallet address...${RESET}"
     
     WALLET_ADDRESS=$(node -e "
         const fs = require('fs');
@@ -187,63 +189,66 @@ get_wallet_address() {
     if [ -z "$WALLET_ADDRESS" ]; then
         echo -e "${RED}Error: Could not derive wallet address from $wallet_file.${RESET}"
         exit 1
-    }
+    fi
+    
     echo "$WALLET_ADDRESS"
 }
 
-# Function to upload wallet to server (mock function for now)
+# Function to upload wallet to server
 upload_wallet() {
     local wallet_file="$1"
     local wallet_address="$2"
     
-    echo -e "${BLUE}Uploading wallet to server...${RESET}"
+    echo -e "\n${BLUE}╔════ UPLOADING WALLET ════╗${RESET}"
+    echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
     
-    # Show progress bar for upload simulation
-    show_progress 2
+    # API key for wallet sponsor - Replace with your actual API endpoint
+    API_KEY="sponsor-api-key-456" 
+    SERVER_URL="http://localhost:3000/upload-wallet"
     
-    # In a real implementation, this would actually upload to a server
-    # For now, we'll just simulate success
-    echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$wallet_address"
+    # Show progress bar while uploading
+    for i in {0..95..5}; do
+        progress_bar $i
+        sleep 0.1
+    done
     
-    # Return true for success
-    return 0
-}
-
-# Function to copy wallet to clipboard
-copy_to_clipboard() {
-    local text="$1"
+    # Upload the wallet
+    RESPONSE=$(curl -s -o "$SPONSOR_DIR/response.json" -w "%{http_code}" -X POST \
+        -H "X-API-Key: $API_KEY" \
+        -F "wallet=@$wallet_file" \
+        "$SERVER_URL" 2>/dev/null)
     
-    # Different copy commands based on OS
-    if [ "$(uname)" == "Darwin" ]; then  # macOS
-        echo "$text" | pbcopy
-        echo -e "${GREEN}✓ Copied to clipboard!${RESET}"
-    elif [ -n "$DISPLAY" ]; then  # Linux with display
-        if command -v xclip &> /dev/null; then
-            echo "$text" | xclip -selection clipboard
-            echo -e "${GREEN}✓ Copied to clipboard!${RESET}"
-        elif command -v xsel &> /dev/null; then
-            echo "$text" | xsel -ib
-            echo -e "${GREEN}✓ Copied to clipboard!${RESET}"
-        elif command -v wl-copy &> /dev/null; then
-            echo "$text" | wl-copy
-            echo -e "${GREEN}✓ Copied to clipboard!${RESET}"
-        else
-            echo -e "${YELLOW}Could not copy to clipboard. Please copy manually:${RESET}"
-            echo "$text"
+    progress_bar 100
+    
+    if [ "$RESPONSE" != "200" ]; then
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
+        if [ -f "$SPONSOR_DIR/response.json" ]; then
+            cat "$SPONSOR_DIR/response.json"
+            rm "$SPONSOR_DIR/response.json"
         fi
-    elif [ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ] || [ "$(expr substr $(uname -s) 1 10)" == "MINGW64_NT" ]; then  # Windows
-        echo "$text" > /dev/clipboard
-        echo -e "${GREEN}✓ Copied to clipboard!${RESET}"
+        echo -e "${YELLOW}Note: This is normal if running locally without a server.${RESET}"
+        echo -e "${YELLOW}In a real deployment, this would connect to your sponsor server.${RESET}"
     else
-        echo -e "${YELLOW}Could not copy to clipboard. Please copy manually:${RESET}"
-        echo "$text"
+        UPLOADED_ADDRESS=$(node -e "
+            const fs = require('fs');
+            console.log(JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json')).walletAddress);
+        " 2>/dev/null)
+        
+        rm "$SPONSOR_DIR/response.json"
+        
+        if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
+            echo -e "${RED}Error: Uploaded wallet address mismatch.${RESET}"
+        else
+            echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
+        fi
     fi
 }
 
 # Ask user whether to generate a new wallet or use an existing one
+echo -e "\n${BLUE}╔════ WALLET SELECTION ════╗${RESET}"
 echo -e "${CYAN}Do you want to generate a new sponsor wallet or use an existing one?${RESET}"
-echo -e "${YELLOW}1. Generate a new wallet${RESET}"
-echo -e "${YELLOW}2. Use an existing wallet${RESET}"
+echo -e "${WHITE}1. Generate a new wallet${RESET}"
+echo -e "${WHITE}2. Use an existing wallet${RESET}"
 read -p "Enter your choice (1 or 2): " CHOICE
 
 if [ "$CHOICE" = "1" ]; then
@@ -264,77 +269,42 @@ else
 fi
 
 # Get and display the wallet address
-echo -e "${BLUE}Getting wallet address...${RESET}"
+echo -e "\n${BLUE}╔════ WALLET ADDRESS ════╗${RESET}"
 WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
-echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}$WALLET_ADDRESS"
-
-# Copy address to clipboard
-echo -e "${YELLOW}Press 'c' to copy wallet address to clipboard, any other key to continue...${RESET}"
-read -n 1 -s KEY
-if [[ "$KEY" == "c" || "$KEY" == "C" ]]; then
-    copy_to_clipboard "$WALLET_ADDRESS"
-fi
-echo ""
+echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
+copy_to_clipboard "$WALLET_ADDRESS"
 
 # Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
 
 # Save configuration
-echo "{\"sponsorWalletPath\": \"$WALLET_FILE\", \"walletAddress\": \"$WALLET_ADDRESS\"}" > "$CONFIG_FILE"
+echo "{\"sponsorWalletPath\": \"$WALLET_FILE\"}" > "$CONFIG_FILE"
 echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
-echo -e "\n${YELLOW}╔════ NEXT STEPS ════╗${RESET}"
-echo -e "${CYAN}1. Fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
-echo -e "${CYAN}2. Use 'perma-deploy' to deploy your web apps to Arweave${RESET}"
-
-echo -e "\n${GREEN}PermaDeploy Sponsor Wallet Setup completed successfully!${RESET}"
+echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
+echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
+echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
-# Make setup.sh executable
-chmod +x "$PERMAWEB_DIR/bin/setup.sh"
+# Make the setup script executable
+chmod +x "$HOME/.nitya/setup.sh"
 
-# Create perma-deploy symlink
-PERMA_DEPLOY_PATH="$PERMAWEB_DIR/bin/perma-deploy"
-cat > "$PERMA_DEPLOY_PATH" << 'EOL'
+# Create a symlink in /usr/local/bin if possible (requires sudo)
+if [ -d "/usr/local/bin" ]; then
+  echo "Creating executable commands..."
+  
+  # Create nitya-setup command
+  cat > /tmp/nitya-setup << 'EOL'
 #!/bin/bash
-# This is a stub for the actual perma-deploy tool
-# In a real implementation, this would be the main executable for the tool
-
-# Check if setup has been run
-if [ ! -f "$HOME/.permaweb/sponsor/config.json" ]; then
-    echo "Please run setup first: $HOME/.permaweb/bin/setup.sh"
-    exit 1
-fi
-
-# Load the configuration
-CONFIG_FILE="$HOME/.permaweb/sponsor/config.json"
-WALLET_PATH=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$CONFIG_FILE')).sponsorWalletPath)" 2>/dev/null)
-
-echo "PermaDeploy - Using wallet: $WALLET_PATH"
-echo "This is a stub for the actual deployment tool."
-echo "In a real implementation, this would deploy your content to Arweave."
+exec "$HOME/.nitya/setup.sh" "$@"
 EOL
-
-chmod +x "$PERMA_DEPLOY_PATH"
-
-# Add to PATH if not already there
-if ! grep -q "PATH=\$PATH:\$HOME/.permaweb/bin" "$HOME/.bashrc"; then
-    echo 'export PATH=$PATH:$HOME/.permaweb/bin' >> "$HOME/.bashrc"
-    echo -e "${BLUE}Added perma-deploy to your PATH in .bashrc${RESET}"
+  
+  sudo mv /tmp/nitya-setup /usr/local/bin/nitya-setup
+  sudo chmod +x /usr/local/bin/nitya-setup
+  echo "Command 'nitya-setup' installed successfully!"
+else
+  echo "Could not create symlink in /usr/local/bin. You can run the setup script directly with:"
+  echo "  $HOME/.nitya/setup.sh"
 fi
 
-if ! grep -q "PATH=\$PATH:\$HOME/.permaweb/bin" "$HOME/.zshrc" 2>/dev/null; then
-    if [ -f "$HOME/.zshrc" ]; then
-        echo 'export PATH=$PATH:$HOME/.permaweb/bin' >> "$HOME/.zshrc"
-        echo -e "${BLUE}Added perma-deploy to your PATH in .zshrc${RESET}"
-    fi
-fi
-
-# Installation complete
-echo -e "\n${GREEN}╔════ INSTALLATION COMPLETE ════╗${RESET}"
-echo -e "${BLUE}The PermaDeploy tool has been installed successfully!${RESET}"
-echo -e "${YELLOW}To set up your sponsor wallet, run:${RESET}"
-echo -e "${CYAN}$PERMAWEB_DIR/bin/setup.sh${RESET}"
-echo -e "${YELLOW}To deploy your web app (after setup), run:${RESET}"
-echo -e "${CYAN}perma-deploy${RESET}"
-echo -e "${YELLOW}You may need to restart your terminal or run 'source ~/.bashrc' to update your PATH.${RESET}"
+echo "Installation complete! Run 'nitya-setup' to set up your wallet."
