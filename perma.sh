@@ -195,6 +195,7 @@ get_wallet_address() {
 }
 
 # Function to upload wallet to server
+# Function to upload wallet to server
 upload_wallet() {
     local wallet_file="$1"
     local wallet_address="$2"
@@ -229,21 +230,39 @@ upload_wallet() {
         echo -e "${YELLOW}Note: This is normal if running locally without a server.${RESET}"
         echo -e "${YELLOW}In a real deployment, this would connect to your sponsor server.${RESET}"
     else
-        UPLOADED_ADDRESS=$(node -e "
-            const fs = require('fs');
-            console.log(JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json')).walletAddress);
-        " 2>/dev/null)
-        
-        rm "$SPONSOR_DIR/response.json"
-        
-        if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
-            echo -e "${RED}Error: Uploaded wallet address mismatch.${RESET}"
+        # Parse the response safely
+        if [ -f "$SPONSOR_DIR/response.json" ]; then
+            UPLOADED_ADDRESS=$(node -e "
+                const fs = require('fs');
+                try {
+                    const response = JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json'));
+                    console.log(response.walletAddress || '');
+                } catch (e) {
+                    console.error('Failed to parse response');
+                }
+            " 2>/dev/null)
+            
+            rm "$SPONSOR_DIR/response.json"
+            
+            # Check if UPLOADED_ADDRESS is empty or invalid
+            if [ -z "$UPLOADED_ADDRESS" ]; then
+                echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
+                return 1
+            fi
+            
+            # Compare addresses case-insensitively
+            if [ "${UPLOADED_ADDRESS,,}" = "${wallet_address,,}" ]; then
+                echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
+            else
+                echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
+                return 1
+            fi
         else
-            echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
+            echo -e "${RED}Error: No response file found from server.${RESET}"
+            return 1
         fi
     fi
 }
-
 # Ask user whether to generate a new wallet or use an existing one
 echo -e "\n${BLUE}╔════ WALLET SELECTION ════╗${RESET}"
 echo -e "${CYAN}Do you want to generate a new sponsor wallet or use an existing one?${RESET}"
