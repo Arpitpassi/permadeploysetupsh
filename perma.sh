@@ -195,7 +195,6 @@ get_wallet_address() {
 }
 
 # Function to upload wallet to server
-# Function to upload wallet to server
 upload_wallet() {
     local wallet_file="$1"
     local wallet_address="$2"
@@ -236,7 +235,7 @@ upload_wallet() {
                 const fs = require('fs');
                 try {
                     const response = JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json'));
-                    console.log(response.walletAddress || '');
+                    console.log((response.walletAddress || '').trim());
                 } catch (e) {
                     console.error('Failed to parse response');
                 }
@@ -250,8 +249,8 @@ upload_wallet() {
                 return 1
             fi
             
-            # Compare addresses case-insensitively
-            if [ "${UPLOADED_ADDRESS,,}" = "${wallet_address,,}" ]; then
+            # Compare addresses after trimming and normalizing
+            if [ "$(echo "$UPLOADED_ADDRESS" | tr -d '[:space:]')" = "$(echo "$wallet_address" | tr -d '[:space:]')" ]; then
                 echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
             else
                 echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
@@ -263,6 +262,7 @@ upload_wallet() {
         fi
     fi
 }
+
 # Ask user whether to generate a new wallet or use an existing one
 echo -e "\n${BLUE}╔════ WALLET SELECTION ════╗${RESET}"
 echo -e "${CYAN}Do you want to generate a new sponsor wallet or use an existing one?${RESET}"
