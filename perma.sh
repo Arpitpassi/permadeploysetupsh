@@ -400,7 +400,7 @@ main() {
   echo -e "${FG_CYAN}1.${RESET} Generate a new wallet"
   echo -e "${FG_CYAN}2.${RESET} Use an existing wallet"
   
-  read -p "$(echo -e ${FG_YELLOW}"> Enter your choice (1 or 2): "${RESET})" CHOICE
+  read -p "$(echo -e "${FG_YELLOW}> Enter your choice (1 or 2): ${RESET}")" CHOICE
   
   if [ "$CHOICE" = "1" ]; then
     echo -e "\n${BRIGHT}${FG_YELLOW}╔════ GENERATING NEW WALLET ════╗${RESET}"
@@ -412,7 +412,7 @@ main() {
     WALLET_FILE="$WALLET_DIR/sponsor_wallet.json"
   elif [ "$CHOICE" = "2" ]; then
     echo -e "\n${BRIGHT}${FG_YELLOW}╔════ USING EXISTING WALLET ════╗${RESET}"
-    read -p "$(echo -e ${FG_YELLOW}"> Enter the path to your existing wallet keyfile: "${RESET})" EXISTING_WALLET
+    read -p "$(echo -e "${FG_YELLOW}> Enter the path to your existing wallet keyfile: ${RESET}")" EXISTING_WALLET
     
     if [ ! -f "$EXISTING_WALLET" ]; then
       echo -e "${FG_RED}✗ Error: Wallet keyfile not found at $EXISTING_WALLET${RESET}"
@@ -498,7 +498,7 @@ echo -e "${FG_CYAN}● You can run it anytime with:${RESET} ${FG_YELLOW}permadep
 
 echo -e "\n${BRIGHT}${FG_YELLOW}╔════ RUNNING SETUP NOW ════╗${RESET}"
 echo -e "${FG_CYAN}● Would you like to run the setup now? (y/n)${RESET}"
-read -p "$(echo -e ${FG_YELLOW}"> "${RESET})" START_NOW
+read -p "$(echo -e "${FG_YELLOW}> ${RESET}")" START_NOW
 
 if [[ "$START_NOW" == "y" || "$START_NOW" == "Y" || "$START_NOW" == "yes" || "$START_NOW" == "Yes" ]]; then
     echo -e "${FG_GREEN}✓ Starting PermaDeploy Sponsor Wallet Setup...${RESET}"
