@@ -221,7 +221,7 @@ upload_wallet() {
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTPidir status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
             rm "$SPONSOR_DIR/response.json"
