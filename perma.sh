@@ -176,7 +176,7 @@ generate_wallet() {
 # Function to get wallet address from keyfile
 get_wallet_address() {
     local wallet_file="$1"
-    echo -e "${BLUE}Getting wallet address...${RESET}" >&2
+    echo -e "${BLUE}Getting wallet address...${RESET}"
     
     WALLET_ADDRESS=$(node -e "
         const fs = require('fs');
@@ -194,7 +194,7 @@ get_wallet_address() {
     echo "$WALLET_ADDRESS"
 }
 
-# Function to upload wallet to Stadserver
+# Function to upload wallet to server
 upload_wallet() {
     local wallet_file="$1"
     local wallet_address="$2"
@@ -255,9 +255,6 @@ upload_wallet() {
     fi
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
-    
-    # Allow copying the uploaded wallet address
-    copy_to_clipboard "$UPLOADED_ADDRESS"
 }
 
 # Ask user whether to generate a new wallet or use an existing one
@@ -287,7 +284,8 @@ fi
 # Get and display the wallet address
 echo -e "\n${BLUE}╔════ WALLET ADDRESS ════╗${RESET}"
 WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
-echo -e "${GREEN}✓ Sponsor wallet address: ${WHITE}$WALLET_ADDRESS${RESET}"
+echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
+copy_to_clipboard "$WALLET_ADDRESS"
 
 # Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
@@ -301,7 +299,7 @@ echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ar
 echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
-# Make the setup script executable
+# Make finer setup script executable
 chmod +x "$HOME/.nitya/setup.sh"
 
 # Create a symlink in /usr/local/bin if possible (requires sudo)
