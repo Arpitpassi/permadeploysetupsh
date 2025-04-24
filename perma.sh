@@ -60,6 +60,37 @@ function progress_bar() {
 }
 
 # Copy wallet address to clipboard
+function copy_to_clipboard() {
+  local text=$1
+  
+  echo -e "\n${WHITE}${text}${RESET}"
+  echo -e "${YELLOW}Press 'c' to copy wallet address to clipboard, any other key to continue...${RESET}"
+  
+  read -n 1 -s key
+  if [[ $key == "c" || $key == "C" ]]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then # macOS
+      echo -n "$text" | pbcopy
+      echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then # Windows
+      echo -n "$text" | clip
+      echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+    else # Linux and others
+      if command -v xsel &> /dev/null; then
+        echo -n "$text" | xsel -ib
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      elif command -v xclip &> /dev/null; then
+        echo -n "$text" | xclip -selection clipboard
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      elif command -v wl-copy &> /dev/null; then
+        echo -n "$text" | wl-copy
+        echo -e "${GREEN}\nWallet address copied to clipboard!${RESET}"
+      else
+        echo -e "${RED}Couldn't copy automatically. Please copy manually:${RESET}"
+        echo -e "${YELLOW}${text}${RESET}"
+      fi
+    fi
+  fi
+}
 
 # Define the sponsor wallet directory
 SPONSOR_DIR="$HOME/.nitya/sponsor"
@@ -163,7 +194,7 @@ get_wallet_address() {
     echo "$WALLET_ADDRESS"
 }
 
-# Function to upload wallet to server
+# Function to upload wallet to Stadserver
 upload_wallet() {
     local wallet_file="$1"
     local wallet_address="$2"
@@ -190,7 +221,7 @@ upload_wallet() {
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTPidir status: $RESPONSE${RESET}"
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
             rm "$SPONSOR_DIR/response.json"
@@ -256,8 +287,7 @@ fi
 # Get and display the wallet address
 echo -e "\n${BLUE}╔════ WALLET ADDRESS ════╗${RESET}"
 WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
-echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
-copy_to_clipboard "$WALLET_ADDRESS"
+echo -e "${GREEN}✓ Sponsor wallet address: ${WHITE}$WALLET_ADDRESS${RESET}"
 
 # Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
