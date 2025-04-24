@@ -176,7 +176,7 @@ generate_wallet() {
 # Function to get wallet address from keyfile
 get_wallet_address() {
     local wallet_file="$1"
-    echo -e "${BLUE}Getting wallet address...${RESET}"
+    echo -e "${BLUE}Getting wallet address...${RESET}" >&2
     
     WALLET_ADDRESS=$(node -e "
         const fs = require('fs');
@@ -221,7 +221,7 @@ upload_wallet() {
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTPidir status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
             rm "$SPONSOR_DIR/response.json"
@@ -255,6 +255,9 @@ upload_wallet() {
     fi
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
+    
+    # Allow copying the uploaded wallet address
+    copy_to_clipboard "$UPLOADED_ADDRESS"
 }
 
 # Ask user whether to generate a new wallet or use an existing one
@@ -299,7 +302,7 @@ echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ar
 echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
-# Make finer setup script executable
+# Make the setup script executable
 chmod +x "$HOME/.nitya/setup.sh"
 
 # Create a symlink in /usr/local/bin if possible (requires sudo)
