@@ -203,7 +203,7 @@ upload_wallet() {
     echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
     
     # API key for wallet sponsor - Replace with your actual API endpoint
-    API_KEY="sponsor-api-key-456" 
+    API_KEY="sponsor-api-key-456"
     SERVER_URL="http://localhost:3000/upload-wallet"
     
     # Show progress bar while uploading
@@ -228,39 +228,33 @@ upload_wallet() {
         fi
         echo -e "${YELLOW}Note: This is normal if running locally without a server.${RESET}"
         echo -e "${YELLOW}In a real deployment, this would connect to your sponsor server.${RESET}"
-    else
-        # Parse the response safely
-        if [ -f "$SPONSOR_DIR/response.json" ]; then
-            UPLOADED_ADDRESS=$(node -e "
-                const fs = require('fs');
-                try {
-                    const response = JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json'));
-                    console.log((response.walletAddress || '').trim());
-                } catch (e) {
-                    console.error('Failed to parse response');
-                }
-            " 2>/dev/null)
-            
-            rm "$SPONSOR_DIR/response.json"
-            
-            # Check if UPLOADED_ADDRESS is empty or invalid
-            if [ -z "$UPLOADED_ADDRESS" ]; then
-                echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
-                return 1
-            fi
-            
-            # Compare addresses after trimming and normalizing
-            if [ "$(echo "$UPLOADED_ADDRESS" | tr -d '[:space:]')" = "$(echo "$wallet_address" | tr -d '[:space:]')" ]; then
-                echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
-            else
-                echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
-                return 1
-            fi
-        else
-            echo -e "${RED}Error: No response file found from server.${RESET}"
-            return 1
-        fi
+        exit 1
     fi
+    
+    # Parse the response
+    UPLOADED_ADDRESS=$(node -e "
+        const fs = require('fs');
+        try {
+            const response = JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json'));
+            console.log(response.walletAddress || '');
+        } catch (e) {
+            console.error('Failed to parse response');
+        }
+    " 2>/dev/null)
+    
+    rm "$SPONSOR_DIR/response.json"
+    
+    if [ -z "$UPLOADED_ADDRESS" ]; then
+        echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
+        exit 1
+    fi
+    
+    if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
+        echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
 }
 
 # Ask user whether to generate a new wallet or use an existing one
@@ -305,7 +299,7 @@ echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ar
 echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
-# Make the setup script executable
+# Make finer setup script executable
 chmod +x "$HOME/.nitya/setup.sh"
 
 # Create a symlink in /usr/local/bin if possible (requires sudo)
