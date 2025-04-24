@@ -323,4 +323,4 @@ else
   echo "  $HOME/.nitya/setup.sh"
 fi
 
-echo "Installation complete! Run 'nitya-setup' to set up your wallet."
+echo "Installation complete!! Run 'nitya-setup' to set up your wallet."
