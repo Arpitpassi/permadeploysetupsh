@@ -59,6 +59,36 @@ function progress_bar() {
   if [ $percent -eq 100 ]; then echo; fi
 }
 
+# Add after the print_title function in setup.sh
+function setup_pool_type() {
+  echo -e "${BLUE}╔════ POOL CONFIGURATION ════╗${RESET}"
+  echo -e "${CYAN}Please select your pool type:${RESET}"
+  echo -e "${WHITE}1. Community pool deployment${RESET}"
+  echo -e "${WHITE}2. Event pool deployment${RESET}"
+  read -p "Enter your choice (1 or 2): " POOL_TYPE_CHOICE
+
+  if [ "$POOL_TYPE_CHOICE" = "1" ]; then
+    POOL_TYPE="community"
+    echo -e "${GREEN}✓ Community pool selected${RESET}"
+  elif [ "$POOL_TYPE_CHOICE" = "2" ]; then
+    POOL_TYPE="event"
+    echo -e "${GREEN}✓ Event pool selected${RESET}"
+    
+    # For event pools, get the name and password
+    read -p "Enter a name for your event pool: " EVENT_POOL_NAME
+    read -s -p "Enter a password for your event pool: " EVENT_POOL_PASSWORD
+    echo
+    
+    # Ask for max allowed users for this event pool
+    read -p "Enter maximum number of allowed users for this event: " MAX_USERS
+    
+    echo -e "${GREEN}✓ Event pool '${EVENT_POOL_NAME}' configured with ${MAX_USERS} maximum users${RESET}"
+  else
+    echo -e "${RED}Invalid choice. Defaulting to community pool...${RESET}"
+    POOL_TYPE="community"
+  fi
+}
+
 # Copy wallet address to clipboard
 function copy_to_clipboard() {
   local text=$1
@@ -294,12 +324,25 @@ copy_to_clipboard "$WALLET_ADDRESS"
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
 
 # Save configuration
-echo "{\"sponsorWalletPath\": \"$WALLET_FILE\"}" > "$CONFIG_FILE"
-echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
+# Replace the existing line that creates the config.json file in setup.sh
+# From: echo "{\"sponsorWalletPath\": \"$WALLET_FILE\"}" > "$CONFIG_FILE"
+# To:
 
-echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
-echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
-echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
+if [ "$POOL_TYPE" = "event" ]; then
+  echo "{
+  \"sponsorWalletPath\": \"$WALLET_FILE\",
+  \"poolType\": \"$POOL_TYPE\",
+  \"eventPoolName\": \"$EVENT_POOL_NAME\",
+  \"eventPoolPassword\": \"$EVENT_POOL_PASSWORD\",
+  \"maxUsers\": $MAX_USERS,
+  \"currentUsers\": []
+}" > "$CONFIG_FILE"
+else
+  echo "{
+  \"sponsorWalletPath\": \"$WALLET_FILE\",
+  \"poolType\": \"community\"
+}" > "$CONFIG_FILE"
+fi
 EOL
 
 # Make the setup script executable
