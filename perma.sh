@@ -43,23 +43,7 @@ function print_title() {
 "
 }
 
-# Visual progress bar
-function progress_bar() {
-  local percent=$1
-  local width=${2:-30}
-  local filled=$((width * percent / 100))
-  local empty=$((width - filled))
-  local bar="${GREEN}["
-  for ((i=0; i<filled; i++)); do bar+="█"; done
-  bar+="${RED}"
-  for ((i=0; i<empty; i++)); do bar+=" "; done
-  bar+="] ${percent}%${RESET}"
-  
-  echo -ne "\r${bar}"
-  if [ $percent -eq 100 ]; then echo; fi
-}
-
-# Add after the print_title function in setup.sh
+# Function to setup pool type
 function setup_pool_type() {
   echo -e "${BLUE}╔════ POOL CONFIGURATION ════╗${RESET}"
   echo -e "${CYAN}Please select your pool type:${RESET}"
@@ -87,6 +71,22 @@ function setup_pool_type() {
     echo -e "${RED}Invalid choice. Defaulting to community pool...${RESET}"
     POOL_TYPE="community"
   fi
+}
+
+# Visual progress bar
+function progress_bar() {
+  local percent=$1
+  local width=${2:-30}
+  local filled=$((width * percent / 100))
+  local empty=$((width - filled))
+  local bar="${GREEN}["
+  for ((i=0; i<filled; i++)); do bar+="█"; done
+  bar+="${RED}"
+  for ((i=0; i<empty; i++)); do bar+=" "; done
+  bar+="] ${percent}%${RESET}"
+  
+  echo -ne "\r${bar}"
+  if [ $percent -eq 100 ]; then echo; fi
 }
 
 # Copy wallet address to clipboard
@@ -290,6 +290,9 @@ upload_wallet() {
     copy_to_clipboard "$UPLOADED_ADDRESS"
 }
 
+# Configure the pool type first
+setup_pool_type
+
 # Ask user whether to generate a new wallet or use an existing one
 echo -e "\n${BLUE}╔════ WALLET SELECTION ════╗${RESET}"
 echo -e "${CYAN}Do you want to generate a new sponsor wallet or use an existing one?${RESET}"
@@ -323,11 +326,7 @@ copy_to_clipboard "$WALLET_ADDRESS"
 # Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
 
-# Save configuration
-# Replace the existing line that creates the config.json file in setup.sh
-# From: echo "{\"sponsorWalletPath\": \"$WALLET_FILE\"}" > "$CONFIG_FILE"
-# To:
-
+# Save configuration based on pool type
 if [ "$POOL_TYPE" = "event" ]; then
   echo "{
   \"sponsorWalletPath\": \"$WALLET_FILE\",
@@ -343,6 +342,12 @@ else
   \"poolType\": \"community\"
 }" > "$CONFIG_FILE"
 fi
+
+echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
+
+echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
+echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
+echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
 # Make the setup script executable
