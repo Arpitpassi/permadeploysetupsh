@@ -43,6 +43,36 @@ function print_title() {
 "
 }
 
+# Function to setup pool type
+function setup_pool_type() {
+  echo -e "${BLUE}╔════ POOL CONFIGURATION ════╗${RESET}"
+  echo -e "${CYAN}Please select your pool type:${RESET}"
+  echo -e "${WHITE}1. Community pool deployment${RESET}"
+  echo -e "${WHITE}2. Event pool deployment${RESET}"
+  read -p "Enter your choice (1 or 2): " POOL_TYPE_CHOICE
+
+  if [ "$POOL_TYPE_CHOICE" = "1" ]; then
+    POOL_TYPE="community"
+    echo -e "${GREEN}✓ Community pool selected${RESET}"
+  elif [ "$POOL_TYPE_CHOICE" = "2" ]; then
+    POOL_TYPE="event"
+    echo -e "${GREEN}✓ Event pool selected${RESET}"
+    
+    # For event pools, get the name and password
+    read -p "Enter a name for your event pool: " EVENT_POOL_NAME
+    read -s -p "Enter a password for your event pool: " EVENT_POOL_PASSWORD
+    echo
+    
+    # Ask for max allowed users for this event pool
+    read -p "Enter maximum number of allowed users for this event: " MAX_USERS
+    
+    echo -e "${GREEN}✓ Event pool '${EVENT_POOL_NAME}' configured with ${MAX_USERS} maximum users${RESET}"
+  else
+    echo -e "${RED}Invalid choice. Defaulting to community pool...${RESET}"
+    POOL_TYPE="community"
+  fi
+}
+
 # Visual progress bar
 function progress_bar() {
   local percent=$1
@@ -104,6 +134,16 @@ print_title
 
 echo -e "${BLUE}╔════ WALLET SETUP ════╗${RESET}"
 echo -e "${CYAN}Configuration directory: ${RESET}$SPONSOR_DIR"
+
+# Check if config file exists and prompt for overwrite
+if [ -f "$CONFIG_FILE" ]; then
+  echo -e "${YELLOW}Configuration file already exists at ${CONFIG_FILE}.${RESET}"
+  read -p "Do you want to overwrite it? (y/n): " OVERWRITE_CONFIG
+  if [ "$OVERWRITE_CONFIG" != "y" ]; then
+    echo -e "${GREEN}Keeping existing configuration. Exiting...${RESET}"
+    exit 0
+  fi
+fi
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
@@ -202,17 +242,14 @@ upload_wallet() {
     echo -e "\n${BLUE}╔════ UPLOADING WALLET ════╗${RESET}"
     echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
     
-    # API key for wallet sponsor - Replace with your actual API endpoint
     API_KEY="sponsor-api-key-456"
     SERVER_URL="http://localhost:3000/upload-wallet"
     
-    # Show progress bar while uploading
     for i in {0..95..5}; do
         progress_bar $i
         sleep 0.1
     done
     
-    # Upload the wallet
     RESPONSE=$(curl -s -o "$SPONSOR_DIR/response.json" -w "%{http_code}" -X POST \
         -H "X-API-Key: $API_KEY" \
         -F "wallet=@$wallet_file" \
@@ -221,7 +258,7 @@ upload_wallet() {
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTPidir status: $RESPONSE${RESET}"
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
             rm "$SPONSOR_DIR/response.json"
@@ -231,7 +268,6 @@ upload_wallet() {
         exit 1
     fi
     
-    # Parse the response
     UPLOADED_ADDRESS=$(node -e "
         const fs = require('fs');
         try {
@@ -256,9 +292,11 @@ upload_wallet() {
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
     
-    # Allow copying the uploaded wallet address
     copy_to_clipboard "$UPLOADED_ADDRESS"
 }
+
+# Configure the pool type first
+setup_pool_type
 
 # Ask user whether to generate a new wallet or use an existing one
 echo -e "\n${BLUE}╔════ WALLET SELECTION ════╗${RESET}"
@@ -284,6 +322,12 @@ else
     exit 1
 fi
 
+# Verify wallet file exists
+if [ ! -f "$WALLET_FILE" ]; then
+    echo -e "${RED}Error: Wallet file not found at $WALLET_FILE${RESET}"
+    exit 1
+fi
+
 # Get and display the wallet address
 echo -e "\n${BLUE}╔════ WALLET ADDRESS ════╗${RESET}"
 WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
@@ -293,8 +337,23 @@ copy_to_clipboard "$WALLET_ADDRESS"
 # Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
 
-# Save configuration
-echo "{\"sponsorWalletPath\": \"$WALLET_FILE\"}" > "$CONFIG_FILE"
+# Save configuration based on pool type
+if [ "$POOL_TYPE" = "event" ]; then
+  echo "{
+  \"sponsorWalletPath\": \"$WALLET_FILE\",
+  \"poolType\": \"$POOL_TYPE\",
+  \"eventPoolName\": \"$EVENT_POOL_NAME\",
+  \"eventPoolPassword\": \"$EVENT_POOL_PASSWORD\",
+  \"maxUsers\": $MAX_USERS,
+  \"currentUsers\": []
+}" > "$CONFIG_FILE"
+else
+  echo "{
+  \"sponsorWalletPath\": \"$WALLET_FILE\",
+  \"poolType\": \"community\"
+}" > "$CONFIG_FILE"
+fi
+
 echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
 echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
@@ -309,7 +368,6 @@ chmod +x "$HOME/.nitya/setup.sh"
 if [ -d "/usr/local/bin" ]; then
   echo "Creating executable commands..."
   
-  # Create nitya-setup command
   cat > /tmp/nitya-setup << 'EOL'
 #!/bin/bash
 exec "$HOME/.nitya/setup.sh" "$@"
