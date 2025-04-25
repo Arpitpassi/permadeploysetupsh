@@ -135,6 +135,16 @@ print_title
 echo -e "${BLUE}╔════ WALLET SETUP ════╗${RESET}"
 echo -e "${CYAN}Configuration directory: ${RESET}$SPONSOR_DIR"
 
+# Check if config file exists and prompt for overwrite
+if [ -f "$CONFIG_FILE" ]; then
+  echo -e "${YELLOW}Configuration file already exists at ${CONFIG_FILE}.${RESET}"
+  read -p "Do you want to overwrite it? (y/n): " OVERWRITE_CONFIG
+  if [ "$OVERWRITE_CONFIG" != "y" ]; then
+    echo -e "${GREEN}Keeping existing configuration. Exiting...${RESET}"
+    exit 0
+  fi
+fi
+
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
     echo -e "${RED}Error: Node.js is required. Please install it:${RESET}"
@@ -232,17 +242,14 @@ upload_wallet() {
     echo -e "\n${BLUE}╔════ UPLOADING WALLET ════╗${RESET}"
     echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
     
-    # API key for wallet sponsor - Replace with your actual API endpoint
     API_KEY="sponsor-api-key-456"
     SERVER_URL="http://localhost:3000/upload-wallet"
     
-    # Show progress bar while uploading
     for i in {0..95..5}; do
         progress_bar $i
         sleep 0.1
     done
     
-    # Upload the wallet
     RESPONSE=$(curl -s -o "$SPONSOR_DIR/response.json" -w "%{http_code}" -X POST \
         -H "X-API-Key: $API_KEY" \
         -F "wallet=@$wallet_file" \
@@ -251,7 +258,7 @@ upload_wallet() {
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTPidir status: $RESPONSE${RESET}"
+        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
             rm "$SPONSOR_DIR/response.json"
@@ -261,7 +268,6 @@ upload_wallet() {
         exit 1
     fi
     
-    # Parse the response
     UPLOADED_ADDRESS=$(node -e "
         const fs = require('fs');
         try {
@@ -286,7 +292,6 @@ upload_wallet() {
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
     
-    # Allow copying the uploaded wallet address
     copy_to_clipboard "$UPLOADED_ADDRESS"
 }
 
@@ -314,6 +319,12 @@ elif [ "$CHOICE" = "2" ]; then
     echo -e "${GREEN}✓ Existing wallet copied to ${RESET}$WALLET_FILE"
 else
     echo -e "${RED}Invalid choice. Exiting...${RESET}"
+    exit 1
+fi
+
+# Verify wallet file exists
+if [ ! -f "$WALLET_FILE" ]; then
+    echo -e "${RED}Error: Wallet file not found at $WALLET_FILE${RESET}"
     exit 1
 fi
 
@@ -357,7 +368,6 @@ chmod +x "$HOME/.nitya/setup.sh"
 if [ -d "/usr/local/bin" ]; then
   echo "Creating executable commands..."
   
-  # Create nitya-setup command
   cat > /tmp/nitya-setup << 'EOL'
 #!/bin/bash
 exec "$HOME/.nitya/setup.sh" "$@"
