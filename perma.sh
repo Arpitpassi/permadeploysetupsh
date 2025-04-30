@@ -169,6 +169,21 @@ if ! command -v curl &> /dev/null; then
     exit 1
 fi
 
+# Check if sponsor server is running
+SERVER_URL="http://localhost:3000"
+SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER_URL" 2>/dev/null || echo "000")
+if [ "$SERVER_STATUS" = "000" ]; then
+    echo -e "${YELLOW}Warning: Sponsor server doesn't appear to be running at $SERVER_URL${RESET}"
+    echo -e "${YELLOW}You'll need to start it separately before deploying with the sponsor pool.${RESET}"
+    read -p "Continue wallet setup anyway? (y/n): " CONTINUE_SETUP
+    if [ "$CONTINUE_SETUP" != "y" ]; then
+        echo -e "${RED}Setup cancelled. Please start the sponsor server first.${RESET}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✓ Connected to sponsor server at $SERVER_URL${RESET}"
+fi
+
 # Install arweave package if needed
 echo -e "${BLUE}Checking for required packages...${RESET}"
 if ! npm list -g arweave &> /dev/null; then
@@ -245,6 +260,15 @@ upload_wallet() {
     API_KEY="sponsor-api-key-456"
     SERVER_URL="http://localhost:3000/upload-wallet"
     
+    # Check if server is reachable
+    SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000" 2>/dev/null || echo "000")
+    if [ "$SERVER_STATUS" = "000" ]; then
+        echo -e "${YELLOW}Warning: Sponsor server appears to be offline at http://localhost:3000${RESET}"
+        echo -e "${YELLOW}You'll need to start the server and manually upload your wallet later.${RESET}"
+        echo -e "${GREEN}Wallet setup completed locally. Server upload skipped.${RESET}"
+        return 0
+    fi
+    
     for i in {0..95..5}; do
         progress_bar $i
         sleep 0.1
@@ -261,11 +285,10 @@ upload_wallet() {
         echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
-            rm "$SPONSOR_DIR/response.json"
+            rm -f "$SPONSOR_DIR/response.json"
         fi
-        echo -e "${YELLOW}Note: This is normal if running locally without a server.${RESET}"
-        echo -e "${YELLOW}In a real deployment, this would connect to your sponsor server.${RESET}"
-        exit 1
+        echo -e "${YELLOW}Note: This is expected if the server is not running.${RESET}"
+        return 1
     fi
     
     UPLOADED_ADDRESS=$(node -e "
@@ -278,21 +301,22 @@ upload_wallet() {
         }
     " 2>/dev/null)
     
-    rm "$SPONSOR_DIR/response.json"
+    rm -f "$SPONSOR_DIR/response.json"
     
     if [ -z "$UPLOADED_ADDRESS" ]; then
         echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
-        exit 1
+        return 1
     fi
     
     if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
         echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
-        exit 1
+        return 1
     fi
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
     
     copy_to_clipboard "$UPLOADED_ADDRESS"
+    return 0
 }
 
 # Configure the pool type first
@@ -334,10 +358,11 @@ WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
 echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
 copy_to_clipboard "$WALLET_ADDRESS"
 
-# Upload wallet to server
+# Try to upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
+UPLOAD_RESULT=$?
 
-# Save configuration based on pool type
+# Save configuration based on pool type, regardless of server upload status
 if [ "$POOL_TYPE" = "event" ]; then
   echo "{
   \"sponsorWalletPath\": \"$WALLET_FILE\",
@@ -358,6 +383,11 @@ echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
 echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
 echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
+
+if [ $UPLOAD_RESULT -ne 0 ]; then
+  echo -e "${YELLOW}Remember to start the sponsor server and ensure your wallet is registered there.${RESET}"
+fi
+
 echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
