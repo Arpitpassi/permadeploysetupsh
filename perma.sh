@@ -170,7 +170,7 @@ if ! command -v curl &> /dev/null; then
 fi
 
 # Check if sponsor server is running
-SERVER_URL="http://localhost:3000"
+SERVER_URL="http://167.86.105.114"
 SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER_URL" 2>/dev/null || echo "000")
 if [ "$SERVER_STATUS" = "000" ]; then
     echo -e "${YELLOW}Warning: Sponsor server doesn't appear to be running at $SERVER_URL${RESET}"
@@ -258,12 +258,12 @@ upload_wallet() {
     echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
     
     API_KEY="sponsor-api-key-456"
-    SERVER_URL="http://localhost:3000/upload-wallet"
+    SERVER_URL="http://167.86.105.114/upload-wallet"
     
     # Check if server is reachable
-    SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000" 2>/dev/null || echo "000")
+    SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://167.86.105.114" 2>/dev/null || echo "000")
     if [ "$SERVER_STATUS" = "000" ]; then
-        echo -e "${YELLOW}Warning: Sponsor server appears to be offline at http://localhost:3000${RESET}"
+        echo -e "${YELLOW}Warning: Sponsor server appears to be offline at http://167.86.105.114${RESET}"
         echo -e "${YELLOW}You'll need to start the server and manually upload your wallet later.${RESET}"
         echo -e "${GREEN}Wallet setup completed locally. Server upload skipped.${RESET}"
         return 0
