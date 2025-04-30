@@ -1,10 +1,11 @@
 #!/bin/bash
 
 echo "Installing Nitya wallet setup tool..."
-mkdir -p "$HOME/.nitya"
+# No local directory creation needed since config is stored on server
 
-# Create the setup.sh script in the .nitya directory
-cat > "$HOME/.nitya/setup.sh" << 'EOL'
+# Create the setup.sh script in a temporary location for execution
+TEMP_DIR=$(mktemp -d)
+cat > "$TEMP_DIR/setup.sh" << 'EOL'
 #!/bin/bash
 
 # Nitya Wallet Setup Script
@@ -122,29 +123,6 @@ function copy_to_clipboard() {
   fi
 }
 
-# Define the sponsor wallet directory
-SPONSOR_DIR="$HOME/.nitya/sponsor"
-WALLET_DIR="$SPONSOR_DIR/wallets"
-CONFIG_FILE="$SPONSOR_DIR/config.json"
-
-# Create directories if they don't exist
-mkdir -p "$SPONSOR_DIR" "$WALLET_DIR"
-
-print_title
-
-echo -e "${BLUE}╔════ WALLET SETUP ════╗${RESET}"
-echo -e "${CYAN}Configuration directory: ${RESET}$SPONSOR_DIR"
-
-# Check if config file exists and prompt for overwrite
-if [ -f "$CONFIG_FILE" ]; then
-  echo -e "${YELLOW}Configuration file already exists at ${CONFIG_FILE}.${RESET}"
-  read -p "Do you want to overwrite it? (y/n): " OVERWRITE_CONFIG
-  if [ "$OVERWRITE_CONFIG" != "y" ]; then
-    echo -e "${GREEN}Keeping existing configuration. Exiting...${RESET}"
-    exit 0
-  fi
-fi
-
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
     echo -e "${RED}Error: Node.js is required. Please install it:${RESET}"
@@ -170,16 +148,12 @@ if ! command -v curl &> /dev/null; then
 fi
 
 # Check if sponsor server is running
-SERVER_URL="http://167.86.105.114"
+SERVER_URL="${NITYA_SERVER_URL:-http://localhost:3000}"
 SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER_URL" 2>/dev/null || echo "000")
 if [ "$SERVER_STATUS" = "000" ]; then
-    echo -e "${YELLOW}Warning: Sponsor server doesn't appear to be running at $SERVER_URL${RESET}"
-    echo -e "${YELLOW}You'll need to start it separately before deploying with the sponsor pool.${RESET}"
-    read -p "Continue wallet setup anyway? (y/n): " CONTINUE_SETUP
-    if [ "$CONTINUE_SETUP" != "y" ]; then
-        echo -e "${RED}Setup cancelled. Please start the sponsor server first.${RESET}"
-        exit 1
-    fi
+    echo -e "${RED}Error: Sponsor server is not running at $SERVER_URL${RESET}"
+    echo -e "${YELLOW}Please start the sponsor server and try again.${RESET}"
+    exit 1
 else
     echo -e "${GREEN}✓ Connected to sponsor server at $SERVER_URL${RESET}"
 fi
@@ -201,7 +175,7 @@ fi
 # Function to generate a new Arweave wallet
 generate_wallet() {
     echo -e "${BLUE}Generating a new Arweave wallet...${RESET}"
-    WALLET_FILE="$WALLET_DIR/sponsor_wallet.json"
+    WALLET_FILE=$(mktemp)
     
     # Show progress bar while generating wallet
     for i in {0..100..10}; do
@@ -224,7 +198,7 @@ generate_wallet() {
         exit 1
     fi
     
-    echo -e "\n${GREEN}✓ New wallet generated at ${RESET}$WALLET_FILE"
+    echo -e "\n${GREEN}✓ New wallet generated${RESET}"
     return 0
 }
 
@@ -249,77 +223,86 @@ get_wallet_address() {
     echo "$WALLET_ADDRESS"
 }
 
-# Function to upload wallet to server
-upload_wallet() {
+# Function to configure pool and upload wallet to server
+configure_pool() {
     local wallet_file="$1"
     local wallet_address="$2"
     
-    echo -e "\n${BLUE}╔════ UPLOADING WALLET ════╗${RESET}"
-    echo -e "${CYAN}Uploading wallet to sponsor server...${RESET}"
+    echo -e "\n${BLUE}╔════ CONFIGURING POOL ON SERVER ════╗${RESET}"
+    echo -e "${CYAN}Sending pool configuration and wallet to sponsor server...${RESET}"
     
     API_KEY="sponsor-api-key-456"
-    SERVER_URL="http://167.86.105.114/upload-wallet"
+    CONFIG_URL="$SERVER_URL/configure-pool"
     
-    # Check if server is reachable
-    SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://167.86.105.114" 2>/dev/null || echo "000")
-    if [ "$SERVER_STATUS" = "000" ]; then
-        echo -e "${YELLOW}Warning: Sponsor server appears to be offline at http://167.86.105.114${RESET}"
-        echo -e "${YELLOW}You'll need to start the server and manually upload your wallet later.${RESET}"
-        echo -e "${GREEN}Wallet setup completed locally. Server upload skipped.${RESET}"
-        return 0
+    # Prepare curl command with form data
+    CURL_ARGS=(
+        -X POST
+        -H "X-API-Key: $API_KEY"
+        -F "wallet=@$wallet_file"
+        -F "poolType=$POOL_TYPE"
+    )
+    
+    if [ "$POOL_TYPE" = "event" ]; then
+        CURL_ARGS+=(
+            -F "eventPoolName=$EVENT_POOL_NAME"
+            -F "eventPoolPassword=$EVENT_POOL_PASSWORD"
+            -F "maxUsers=$MAX_USERS"
+        )
     fi
     
+    # Show progress bar
     for i in {0..95..5}; do
         progress_bar $i
         sleep 0.1
     done
     
-    RESPONSE=$(curl -s -o "$SPONSOR_DIR/response.json" -w "%{http_code}" -X POST \
-        -H "X-API-Key: $API_KEY" \
-        -F "wallet=@$wallet_file" \
-        "$SERVER_URL" 2>/dev/null)
+    RESPONSE=$(curl -s -o "$TEMP_DIR/response.json" -w "%{http_code}" "${CURL_ARGS[@]}" "$CONFIG_URL" 2>/dev/null)
     
     progress_bar 100
     
     if [ "$RESPONSE" != "200" ]; then
-        echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
-        if [ -f "$SPONSOR_DIR/response.json" ]; then
-            cat "$SPONSOR_DIR/response.json"
-            rm -f "$SPONSOR_DIR/response.json"
+        echo -e "${RED}Error: Failed to configure pool on server. HTTP status: $RESPONSE${RESET}"
+        if [ -f "$TEMP_DIR/response.json" ]; then
+            cat "$TEMP_DIR/response.json"
+            rm -f "$TEMP_DIR/response.json"
         fi
-        echo -e "${YELLOW}Note: This is expected if the server is not running.${RESET}"
-        return 1
+        exit 1
     fi
     
     UPLOADED_ADDRESS=$(node -e "
         const fs = require('fs');
         try {
-            const response = JSON.parse(fs.readFileSync('$SPONSOR_DIR/response.json'));
+            const response = JSON.parse(fs.readFileSync('$TEMP_DIR/response.json'));
             console.log(response.walletAddress || '');
         } catch (e) {
             console.error('Failed to parse response');
         }
     " 2>/dev/null)
     
-    rm -f "$SPONSOR_DIR/response.json"
+    rm -f "$TEMP_DIR/response.json"
     
     if [ -z "$UPLOADED_ADDRESS" ]; then
         echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
-        return 1
+        exit 1
     fi
     
     if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
         echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
-        return 1
+        exit 1
     fi
     
-    echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
+    echo -e "${GREEN}✓ Pool configured and wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
     
     copy_to_clipboard "$UPLOADED_ADDRESS"
     return 0
 }
 
-# Configure the pool type first
+print_title
+
+echo -e "${BLUE}╔════ POOL SETUP ════╗${RESET}"
+echo -e "${CYAN}Configuring pool on server: ${RESET}$SERVER_URL"
+
+# Configure the pool type
 setup_pool_type
 
 # Ask user whether to generate a new wallet or use an existing one
@@ -331,16 +314,15 @@ read -p "Enter your choice (1 or 2): " CHOICE
 
 if [ "$CHOICE" = "1" ]; then
     generate_wallet
-    WALLET_FILE="$WALLET_DIR/sponsor_wallet.json"
+    WALLET_FILE="$WALLET_FILE"
 elif [ "$CHOICE" = "2" ]; then
     read -p "Enter the path to your existing wallet keyfile (e.g., /path/to/wallet.json): " EXISTING_WALLET
     if [ ! -f "$EXISTING_WALLET" ]; then
         echo -e "${RED}Error: Wallet keyfile not found at $EXISTING_WALLET${RESET}"
         exit 1
     fi
-    WALLET_FILE="$WALLET_DIR/sponsor_wallet.json"
-    cp "$EXISTING_WALLET" "$WALLET_FILE"
-    echo -e "${GREEN}✓ Existing wallet copied to ${RESET}$WALLET_FILE"
+    WALLET_FILE="$EXISTING_WALLET"
+    echo -e "${GREEN}✓ Using existing wallet at ${RESET}$EXISTING_WALLET"
 else
     echo -e "${RED}Invalid choice. Exiting...${RESET}"
     exit 1
@@ -358,57 +340,26 @@ WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
 echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
 copy_to_clipboard "$WALLET_ADDRESS"
 
-# Try to upload wallet to server
-upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
-UPLOAD_RESULT=$?
+# Configure pool and upload wallet to server
+configure_pool "$WALLET_FILE" "$WALLET_ADDRESS"
 
-# Save configuration based on pool type, regardless of server upload status
-if [ "$POOL_TYPE" = "event" ]; then
-  echo "{
-  \"sponsorWalletPath\": \"$WALLET_FILE\",
-  \"poolType\": \"$POOL_TYPE\",
-  \"eventPoolName\": \"$EVENT_POOL_NAME\",
-  \"eventPoolPassword\": \"$EVENT_POOL_PASSWORD\",
-  \"maxUsers\": $MAX_USERS,
-  \"currentUsers\": []
-}" > "$CONFIG_FILE"
-else
-  echo "{
-  \"sponsorWalletPath\": \"$WALLET_FILE\",
-  \"poolType\": \"community\"
-}" > "$CONFIG_FILE"
+# Clean up temporary wallet file if generated
+if [ "$CHOICE" = "1" ]; then
+    rm -f "$WALLET_FILE"
 fi
-
-echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
 echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
 echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
-
-if [ $UPLOAD_RESULT -ne 0 ]; then
-  echo -e "${YELLOW}Remember to start the sponsor server and ensure your wallet is registered there.${RESET}"
-fi
-
-echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
+echo -e "${GREEN}Nitya Pool Setup completed successfully!${RESET}"
 EOL
 
 # Make the setup script executable
-chmod +x "$HOME/.nitya/setup.sh"
+chmod +x "$TEMP_DIR/setup.sh"
 
-# Create a symlink in /usr/local/bin if possible (requires sudo)
-if [ -d "/usr/local/bin" ]; then
-  echo "Creating executable commands..."
-  
-  cat > /tmp/nitya-setup << 'EOL'
-#!/bin/bash
-exec "$HOME/.nitya/setup.sh" "$@"
-EOL
-  
-  sudo mv /tmp/nitya-setup /usr/local/bin/nitya-setup
-  sudo chmod +x /usr/local/bin/nitya-setup
-  echo "Command 'nitya-setup' installed successfully!"
-else
-  echo "Could not create symlink in /usr/local/bin. You can run the setup script directly with:"
-  echo "  $HOME/.nitya/setup.sh"
-fi
+# Run the setup script
+"$TEMP_DIR/setup.sh"
 
-echo "Installation complete!! Run 'nitya-setup' to set up your wallet."
+# Clean up temporary directory
+rm -rf "$TEMP_DIR"
+
+echo "Installation complete! Pool configuration is stored on the server."
