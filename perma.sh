@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo "Installing PermaDeploy wallet setup tool..."
-mkdir -p "$HOME/.perma-deploy"
+echo "Installing Nitya wallet setup tool..."
+mkdir -p "$HOME/.nitya"
 
-# Create the setup.sh script in the .perma-deploy directory
-cat > "$HOME/.perma-deploy/setup.sh" << 'EOL'
+# Create the setup.sh script in the .nitya directory
+cat > "$HOME/.nitya/setup.sh" << 'EOL'
 #!/bin/bash
 
-# PermaDeploy Wallet Setup Script
+# Nitya Wallet Setup Script
 
 # ANSI colors for terminal styling
 RED="\033[0;31m"
@@ -27,7 +27,7 @@ function print_title() {
     ██╔██╗ ██║██║   ██║    ╚████╔╝ ███████║
     ██║╚██╗██║██║   ██║     ╚██╔╝  ██╔══██║
     ██║ ╚████║██║   ██║      ██║   ██║  ██║
-    ╚═╝ 03/16/2023╚═╝      ╚═╝   ╚═╝  ╚═╝
+    ╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝
                                                                       
     ${WHITE}> Permanently deploy your web apps to the decentralized Arweave network${RESET}
     ${CYAN}    
@@ -123,7 +123,7 @@ function copy_to_clipboard() {
 }
 
 # Define the sponsor wallet directory
-SPONSOR_DIR="$HOME/.perma-deploy/sponsor"
+SPONSOR_DIR="$HOME/.nitya/sponsor"
 WALLET_DIR="$SPONSOR_DIR/wallets"
 CONFIG_FILE="$SPONSOR_DIR/config.json"
 
@@ -358,27 +358,27 @@ echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
 echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
 echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
-echo -e "${GREEN}PermaDeploy Wallet Setup completed successfully!${RESET}"
+echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
 EOL
 
 # Make the setup script executable
-chmod +x "$HOME/.perma-deploy/setup.sh"
+chmod +x "$HOME/.nitya/setup.sh"
 
 # Create a symlink in /usr/local/bin if possible (requires sudo)
 if [ -d "/usr/local/bin" ]; then
   echo "Creating executable commands..."
   
-  cat > /tmp/perma-deploy-setup << 'EOL'
+  cat > /tmp/nitya-setup << 'EOL'
 #!/bin/bash
-exec "$HOME/.perma-deploy/setup.sh" "$@"
+exec "$HOME/.nitya/setup.sh" "$@"
 EOL
   
-  sudo mv /tmp/perma-deploy-setup /usr/local/bin/perma-deploy-setup
-  sudo chmod +x /usr/local/bin/perma-deploy-setup
-  echo "Command 'perma-deploy-setup' installed successfully!"
+  sudo mv /tmp/nitya-setup /usr/local/bin/nitya-setup
+  sudo chmod +x /usr/local/bin/nitya-setup
+  echo "Command 'nitya-setup' installed successfully!"
 else
   echo "Could not create symlink in /usr/local/bin. You can run the setup script directly with:"
-  echo "  $HOME/.perma-deploy/setup.sh"
+  echo "  $HOME/.nitya/setup.sh"
 fi
 
-echo "Installation complete!! Run 'perma-deploy-setup' to set up your wallet."
+echo "Installation complete!! Run 'nitya-setup' to set up your wallet."
