@@ -362,4 +362,4 @@ chmod +x "$TEMP_DIR/setup.sh"
 # Clean up temporary directory
 rm -rf "$TEMP_DIR"
 
-echo "Installation complete! Pool configuration is stored on the server."
+echo "Installation complete! Pool configuration is stored on server."
