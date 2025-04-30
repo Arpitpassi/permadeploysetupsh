@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo "Installing Nitya wallet setup tool..."
-mkdir -p "$HOME/.nitya"
+echo "Installing PermaDeploy wallet setup tool..."
+mkdir -p "$HOME/.perma-deploy"
 
-# Create the setup.sh script in the .nitya directory
-cat > "$HOME/.nitya/setup.sh" << 'EOL'
+# Create the setup.sh script in the .perma-deploy directory
+cat > "$HOME/.perma-deploy/setup.sh" << 'EOL'
 #!/bin/bash
 
-# Nitya Wallet Setup Script
+# PermaDeploy Wallet Setup Script
 
 # ANSI colors for terminal styling
 RED="\033[0;31m"
@@ -27,7 +27,7 @@ function print_title() {
     ██╔██╗ ██║██║   ██║    ╚████╔╝ ███████║
     ██║╚██╗██║██║   ██║     ╚██╔╝  ██╔══██║
     ██║ ╚████║██║   ██║      ██║   ██║  ██║
-    ╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝
+    ╚═╝ 03/16/2023╚═╝      ╚═╝   ╚═╝  ╚═╝
                                                                       
     ${WHITE}> Permanently deploy your web apps to the decentralized Arweave network${RESET}
     ${CYAN}    
@@ -123,7 +123,7 @@ function copy_to_clipboard() {
 }
 
 # Define the sponsor wallet directory
-SPONSOR_DIR="$HOME/.nitya/sponsor"
+SPONSOR_DIR="$HOME/.perma-deploy/sponsor"
 WALLET_DIR="$SPONSOR_DIR/wallets"
 CONFIG_FILE="$SPONSOR_DIR/config.json"
 
@@ -167,21 +167,6 @@ if ! command -v curl &> /dev/null; then
     echo "  - macOS: brew install curl"
     echo "  - Windows: download from https://curl.se/download.html"
     exit 1
-fi
-
-# Check if sponsor server is running
-SERVER_URL="http://localhost:3000"
-SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER_URL" 2>/dev/null || echo "000")
-if [ "$SERVER_STATUS" = "000" ]; then
-    echo -e "${YELLOW}Warning: Sponsor server doesn't appear to be running at $SERVER_URL${RESET}"
-    echo -e "${YELLOW}You'll need to start it separately before deploying with the sponsor pool.${RESET}"
-    read -p "Continue wallet setup anyway? (y/n): " CONTINUE_SETUP
-    if [ "$CONTINUE_SETUP" != "y" ]; then
-        echo -e "${RED}Setup cancelled. Please start the sponsor server first.${RESET}"
-        exit 1
-    fi
-else
-    echo -e "${GREEN}✓ Connected to sponsor server at $SERVER_URL${RESET}"
 fi
 
 # Install arweave package if needed
@@ -260,15 +245,6 @@ upload_wallet() {
     API_KEY="sponsor-api-key-456"
     SERVER_URL="http://localhost:3000/upload-wallet"
     
-    # Check if server is reachable
-    SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000" 2>/dev/null || echo "000")
-    if [ "$SERVER_STATUS" = "000" ]; then
-        echo -e "${YELLOW}Warning: Sponsor server appears to be offline at http://localhost:3000${RESET}"
-        echo -e "${YELLOW}You'll need to start the server and manually upload your wallet later.${RESET}"
-        echo -e "${GREEN}Wallet setup completed locally. Server upload skipped.${RESET}"
-        return 0
-    fi
-    
     for i in {0..95..5}; do
         progress_bar $i
         sleep 0.1
@@ -285,10 +261,11 @@ upload_wallet() {
         echo -e "${RED}Error: Failed to upload wallet to server. HTTP status: $RESPONSE${RESET}"
         if [ -f "$SPONSOR_DIR/response.json" ]; then
             cat "$SPONSOR_DIR/response.json"
-            rm -f "$SPONSOR_DIR/response.json"
+            rm "$SPONSOR_DIR/response.json"
         fi
-        echo -e "${YELLOW}Note: This is expected if the server is not running.${RESET}"
-        return 1
+        echo -e "${YELLOW}Note: This is normal if running locally without a server.${RESET}"
+        echo -e "${YELLOW}In a real deployment, this would connect to your sponsor server.${RESET}"
+        exit 1
     fi
     
     UPLOADED_ADDRESS=$(node -e "
@@ -301,22 +278,21 @@ upload_wallet() {
         }
     " 2>/dev/null)
     
-    rm -f "$SPONSOR_DIR/response.json"
+    rm "$SPONSOR_DIR/response.json"
     
     if [ -z "$UPLOADED_ADDRESS" ]; then
         echo -e "${RED}Error: Could not retrieve wallet address from server response.${RESET}"
-        return 1
+        exit 1
     fi
     
     if [ "$UPLOADED_ADDRESS" != "$wallet_address" ]; then
         echo -e "${RED}Error: Uploaded wallet address mismatch. Expected: $wallet_address, Got: $UPLOADED_ADDRESS${RESET}"
-        return 1
+        exit 1
     fi
     
     echo -e "${GREEN}✓ Wallet uploaded successfully. Address: ${RESET}$UPLOADED_ADDRESS"
     
     copy_to_clipboard "$UPLOADED_ADDRESS"
-    return 0
 }
 
 # Configure the pool type first
@@ -358,11 +334,10 @@ WALLET_ADDRESS=$(get_wallet_address "$WALLET_FILE")
 echo -e "${GREEN}✓ Sponsor wallet address: ${RESET}"
 copy_to_clipboard "$WALLET_ADDRESS"
 
-# Try to upload wallet to server
+# Upload wallet to server
 upload_wallet "$WALLET_FILE" "$WALLET_ADDRESS"
-UPLOAD_RESULT=$?
 
-# Save configuration based on pool type, regardless of server upload status
+# Save configuration based on pool type
 if [ "$POOL_TYPE" = "event" ]; then
   echo "{
   \"sponsorWalletPath\": \"$WALLET_FILE\",
@@ -383,32 +358,27 @@ echo -e "${GREEN}✓ Sponsor wallet configured at ${RESET}$CONFIG_FILE"
 
 echo -e "\n${BLUE}╔════ NEXT STEPS ════╗${RESET}"
 echo -e "${YELLOW}Please fund this wallet with AR or Turbo credits at https://ardrive.io/turbo${RESET}"
-
-if [ $UPLOAD_RESULT -ne 0 ]; then
-  echo -e "${YELLOW}Remember to start the sponsor server and ensure your wallet is registered there.${RESET}"
-fi
-
-echo -e "${GREEN}Nitya Wallet Setup completed successfully!${RESET}"
+echo -e "${GREEN}PermaDeploy Wallet Setup completed successfully!${RESET}"
 EOL
 
 # Make the setup script executable
-chmod +x "$HOME/.nitya/setup.sh"
+chmod +x "$HOME/.perma-deploy/setup.sh"
 
 # Create a symlink in /usr/local/bin if possible (requires sudo)
 if [ -d "/usr/local/bin" ]; then
   echo "Creating executable commands..."
   
-  cat > /tmp/nitya-setup << 'EOL'
+  cat > /tmp/perma-deploy-setup << 'EOL'
 #!/bin/bash
-exec "$HOME/.nitya/setup.sh" "$@"
+exec "$HOME/.perma-deploy/setup.sh" "$@"
 EOL
   
-  sudo mv /tmp/nitya-setup /usr/local/bin/nitya-setup
-  sudo chmod +x /usr/local/bin/nitya-setup
-  echo "Command 'nitya-setup' installed successfully!"
+  sudo mv /tmp/perma-deploy-setup /usr/local/bin/perma-deploy-setup
+  sudo chmod +x /usr/local/bin/perma-deploy-setup
+  echo "Command 'perma-deploy-setup' installed successfully!"
 else
   echo "Could not create symlink in /usr/local/bin. You can run the setup script directly with:"
-  echo "  $HOME/.nitya/setup.sh"
+  echo "  $HOME/.perma-deploy/setup.sh"
 fi
 
-echo "Installation complete!! Run 'nitya-setup' to set up your wallet."
+echo "Installation complete!! Run 'perma-deploy-setup' to set up your wallet."
